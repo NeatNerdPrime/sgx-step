@@ -17,3 +17,9 @@
 *.mod
 *.swn
 *.elf
+
+*.dump
+*.json
+*.sgxs
+*.sig
+*.pem
