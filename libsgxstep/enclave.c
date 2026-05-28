@@ -127,6 +127,33 @@ void register_enclave_info(void)
     ioctl_init = 1;
 }
 
+int get_enclave_readable_pages(int count, void **pages)
+{
+    if (!ioctl_init) register_enclave_info();
+
+    FILE *fd_self_maps;
+    uint64_t start, end = 0;
+    char read;
+    int i = 0;
+    
+    ASSERT((fd_self_maps = fopen("/proc/self/maps", "r")) >= 0);
+    while (fscanf(fd_self_maps, "%lx-%lx %c%*c%*c%*c %*x %*x:%*x %*[0-9 ]%*m[^\n]",
+                  &start, &end, &read) > 0)
+    {
+        if (victim.base <= start && victim.limit >= end && read == 'r')
+        {
+            ASSERT( i + (end - start) / PAGE_SIZE_4KiB < count );	    
+	    for (void *p = (void *)start; p < (void *)end; p += PAGE_SIZE_4KiB)
+	    {
+                pages[i++] = p;
+	    }
+	}
+    }
+
+    return i;
+}
+
+
 void *get_enclave_base(void)
 {
     if (!ioctl_init) register_enclave_info();
@@ -320,29 +347,7 @@ void print_enclave_info(void)
 void dump_gprsgx_region(gprsgx_region_t *gprsgx_region)
 {
     printf("=== SSA/GPRSGX region after AEX ===\n");
-    printf("    RAX:      0x%" PRIx64 "\n", gprsgx_region->fields.rax);
-    printf("    RCX:      0x%" PRIx64 "\n", gprsgx_region->fields.rcx);
-    printf("    RDX:      0x%" PRIx64 "\n", gprsgx_region->fields.rdx);
-    printf("    RBX:      0x%" PRIx64 "\n", gprsgx_region->fields.rbx);
-    printf("    RSP:      0x%" PRIx64 "\n", gprsgx_region->fields.rsp);
-    printf("    RBP:      0x%" PRIx64 "\n", gprsgx_region->fields.rbp);
-    printf("    RSI:      0x%" PRIx64 "\n", gprsgx_region->fields.rsi);
-    printf("    RDI:      0x%" PRIx64 "\n", gprsgx_region->fields.rdi);
-    printf("    R8:       0x%" PRIx64 "\n", gprsgx_region->fields.r8);
-    printf("    R9:       0x%" PRIx64 "\n", gprsgx_region->fields.r9);
-    printf("    R10:      0x%" PRIx64 "\n", gprsgx_region->fields.r10);
-    printf("    R11:      0x%" PRIx64 "\n", gprsgx_region->fields.r11);
-    printf("    R12:      0x%" PRIx64 "\n", gprsgx_region->fields.r12);
-    printf("    R13:      0x%" PRIx64 "\n", gprsgx_region->fields.r13);
-    printf("    R14:      0x%" PRIx64 "\n", gprsgx_region->fields.r14);
-    printf("    R15:      0x%" PRIx64 "\n", gprsgx_region->fields.r15);
-    printf("    RFLAGS:   0x%" PRIx64 "\n", gprsgx_region->fields.rflags);
-    printf("    RIP:      0x%" PRIx64 "\n", gprsgx_region->fields.rip);
-    printf("    URSP:     0x%" PRIx64 "\n", gprsgx_region->fields.ursp);
-    printf("    URBP:     0x%" PRIx64 "\n", gprsgx_region->fields.urbp);
-    printf("    EXITINFO: 0x%" PRIx32 "\n", gprsgx_region->fields.exitinfo);
-    printf("    FSBASE:   0x%" PRIx64 "\n", gprsgx_region->fields.fsbase);
-    printf("    GSBASE:   0x%" PRIx64 "\n", gprsgx_region->fields.gsbase);
+    GPRSGX_FIELDS( PRINT_GPR )
 }
 
 #endif

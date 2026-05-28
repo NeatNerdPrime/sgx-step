@@ -1,0 +1,9 @@
+enclave {
+	
+	trusted {
+        public void dummy_enclave_fn( int s );
+	};
+	
+	untrusted {
+	};
+};
